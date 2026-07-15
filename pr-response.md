@@ -1,6 +1,7 @@
 # PR Response Doc — CineLog Watchlist Feature
 
 ## AI Usage
+I used AI (Claude) throughout this project for: orienting in the codebase before touching code (reading collection_service.py, models.py, and test_collection.py to understand naming conventions and patterns before addressing review comments); help executing git commands (rename, dedup implementation, rebase conflict resolution, interactive rebase to clean up commit history); and help drafting and organizing the write-ups in this doc. For Comment 4 (default visibility), I wrote my own position and reasoning first, then had it reviewed and tightened for clarity -- the core argument (social discovery vs. privacy tradeoff, comparison to Goodreads) is my own reasoning.
 
 ## Comment 1 — Rename
 **What I did:** Renamed `save_to_watchlist()` to `add_to_watchlist()` in `services/watchlist_service.py` to match the project's `verb_to_noun` convention (e.g. `add_to_collection`). Updated the import and call site in `routes/watchlist/watchlist.py`.
@@ -30,3 +31,18 @@
 **How I verified no conflict remains:** Ran git status to confirm a clean rebase with no unmerged paths, and pytest tests/ -v — all 5 tests pass after restoring the model.
 
 ## PR Description
+
+### What this PR does
+Adds a watchlist feature to CineLog, letting users save films they want to watch later (separate from their collection of already-watched films). Includes a new WatchlistEntry model, add_to_watchlist() / get_watchlist() service functions, and REST endpoints.
+
+### Design decisions
+- Default visibility (public=True): Watchlists default to public to support CineLog's social/discovery model, similar to a Goodreads "want to read" shelf. Users who want privacy can toggle it off; defaulting to private would mean most users never enable the social discovery benefit.
+- Sort order (date-added, descending): Watchlists are sorted by date_added (newest first) rather than alphabetically, matching the pattern already used in get_collection(). A watchlist is a running, evolving list, so recency is more useful than alphabetical order.
+
+### Manual testing
+1. Start the app: python3 app.py
+2. Create a user and a film via the existing endpoints (or use seeded data)
+3. Add a film to the watchlist: POST /watchlist/<user_id>/add with body {"film_id": "<film_uuid>"}
+4. Confirm it appears in the watchlist sorted by most recently added: GET /watchlist/<user_id>
+5. Try adding the same film again -- confirm it raises an error instead of creating a duplicate
+6. Try adding a nonexistent film_id -- confirm it raises a FilmNotFoundError
